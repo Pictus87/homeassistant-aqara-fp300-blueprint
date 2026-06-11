@@ -468,10 +468,11 @@ blueprint:
 
         zone2_light_target:
           name: "Zone 2 – Licht"
+          description: "Light entity for Zone 2. Leave empty if Zone 2 is disabled."
+          default: ""
           selector:
-            target:
-              entity:
-                domain: light
+            entity:
+              domain: light
 
         zone2_light_off_delay:
           name: "Zone 2 – Ausschaltverzögerung (Sekunden)"
@@ -525,10 +526,11 @@ blueprint:
 
         zone3_light_target:
           name: "Zone 3 – Licht"
+          description: "Light entity for Zone 3. Leave empty if Zone 3 is disabled."
+          default: ""
           selector:
-            target:
-              entity:
-                domain: light
+            entity:
+              domain: light
 
         zone3_light_off_delay:
           name: "Zone 3 – Ausschaltverzögerung (Sekunden)"
@@ -678,12 +680,14 @@ variables:
   # --- Zonen ---
   enable_zone2_v: !input enable_zone2
   zone2_presence_sensor_v: !input zone2_presence_sensor
+  zone2_light_target_v: !input zone2_light_target
   zone2_brightness_v: !input zone2_brightness
   zone2_scene_v: !input zone2_scene
   zone2_light_off_delay_v: !input zone2_light_off_delay
 
   enable_zone3_v: !input enable_zone3
   zone3_presence_sensor_v: !input zone3_presence_sensor
+  zone3_light_target_v: !input zone3_light_target
   zone3_brightness_v: !input zone3_brightness
   zone3_scene_v: !input zone3_scene
   zone3_light_off_delay_v: !input zone3_light_off_delay
@@ -836,7 +840,7 @@ action:
         - condition: trigger
           id: "zone2_on"
         - condition: template
-          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' }}"
+          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' and zone2_light_target_v != '' }}"
       sequence:
         - if:
             - condition: template
@@ -854,7 +858,8 @@ action:
                         transition: 2
               default:
                 - service: light.turn_on
-                  target: !input zone2_light_target
+                  target:
+                    entity_id: "{{ zone2_light_target_v }}"
                   data:
                     brightness_pct: "{{ zone2_brightness_v }}"
                     transition: 2
@@ -866,7 +871,7 @@ action:
         - condition: trigger
           id: "zone2_off"
         - condition: template
-          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' }}"
+          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' and zone2_light_target_v != '' }}"
       sequence:
         - delay:
             seconds: "{{ zone2_light_off_delay_v }}"
@@ -874,7 +879,8 @@ action:
           value_template: >
             {{ states(zone2_presence_sensor_v) == 'off' }}
         - service: light.turn_off
-          target: !input zone2_light_target
+          target:
+            entity_id: "{{ zone2_light_target_v }}"
           data:
             transition: 3
 
@@ -885,7 +891,7 @@ action:
         - condition: trigger
           id: "zone3_on"
         - condition: template
-          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' }}"
+          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' and zone3_light_target_v != '' }}"
       sequence:
         - if:
             - condition: template
@@ -903,7 +909,8 @@ action:
                         transition: 2
               default:
                 - service: light.turn_on
-                  target: !input zone3_light_target
+                  target:
+                    entity_id: "{{ zone3_light_target_v }}"
                   data:
                     brightness_pct: "{{ zone3_brightness_v }}"
                     transition: 2
@@ -915,7 +922,7 @@ action:
         - condition: trigger
           id: "zone3_off"
         - condition: template
-          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' }}"
+          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' and zone3_light_target_v != '' }}"
       sequence:
         - delay:
             seconds: "{{ zone3_light_off_delay_v }}"
@@ -923,7 +930,8 @@ action:
           value_template: >
             {{ states(zone3_presence_sensor_v) == 'off' }}
         - service: light.turn_off
-          target: !input zone3_light_target
+          target:
+            entity_id: "{{ zone3_light_target_v }}"
           data:
             transition: 3
 
