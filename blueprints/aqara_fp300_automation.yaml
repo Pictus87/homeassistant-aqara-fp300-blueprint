@@ -673,6 +673,9 @@ variables:
   temp_comfort_v: !input temp_comfort
   temp_comfort_weekend_v: !input temp_comfort_weekend
   active_temp_comfort: "{{ temp_comfort_weekend_v if use_weekend_profile else temp_comfort_v }}"
+  temp_setback_delay_v: !input temp_setback_delay
+  temp_eco_delay_v: !input temp_eco_delay
+  temp_eco_remaining_v: "{{ [temp_eco_delay_v | int - temp_setback_delay_v | int, 1] | max }}"
 
   # --- Mindest-Einschaltdauer ---
   light_min_on_duration_v: !input light_min_on_duration
@@ -809,7 +812,7 @@ action:
               value_template: "{{ enable_climate_v and climate_target_v != '' }}"
           then:
             - delay:
-                minutes: !input temp_setback_delay
+                minutes: "{{ temp_setback_delay_v | int }}"
             - condition: state
               entity_id: !input presence_sensor
               state: "off"
@@ -822,8 +825,7 @@ action:
             # Eco: restliche Zeit bis eco_delay abwarten
             # (eco_delay ist Gesamtzeit ab Verlassen)
             - delay:
-                minutes: >
-                  {{ [(!input temp_eco_delay | int) - (!input temp_setback_delay | int), 1] | max }}
+                minutes: "{{ temp_eco_remaining_v | int }}"
             - condition: state
               entity_id: !input presence_sensor
               state: "off"
