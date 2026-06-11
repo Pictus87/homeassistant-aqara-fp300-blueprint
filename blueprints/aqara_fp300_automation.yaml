@@ -96,6 +96,17 @@ blueprint:
               entity:
                 domain: light
 
+        light_entity_id:
+          name: "Main Light – Entity ID (for manual override check)"
+          description: >
+            Enter the same light entity as above (e.g. light.living_room).
+            Required for manual override detection. Leave empty to disable the check.
+            Note: if you use a light group, enter the group entity ID.
+          default: ""
+          selector:
+            entity:
+              domain: light
+
         light_off_delay:
           name: "Turn-Off Delay (seconds)"
           description: "How long does the light stay on after the room is vacated?"
@@ -665,6 +676,21 @@ variables:
 
   # --- Manual override protection ---
   manual_override_protection_v: !input manual_override_protection
+  light_entity_id_v: !input light_entity_id
+  # True when the light is currently on AND was last turned on by this automation
+  # (detected via context.parent_id matching this automation's entity_id)
+  automation_turned_light_on_v: >
+    {% if manual_override_protection_v and light_entity_id_v != '' %}
+      {% set ctx = state_attr(light_entity_id_v, 'context') %}
+      {% if ctx is not none and states(light_entity_id_v) == 'on' %}
+        {{ this.entity_id in (ctx.get('parent_id','') | string) or
+           ctx.get('user_id') is none }}
+      {% else %}
+        true
+      {% endif %}
+    {% else %}
+      true
+    {% endif %}
 
   # --- Weekend detection ---
   weekend_different_profiles_v: !input weekend_different_profiles
@@ -855,9 +881,6 @@ action:
                     - condition: template
                       value_template: "{{ use_scenes_v and target_scene != '' }}"
                   sequence:
-                    # Store automation context ID so we can detect manual overrides later
-                    - variables:
-                        automation_last_context: "{{ context.id }}"
                     - service: scene.turn_on
                       target:
                         entity_id: "{{ target_scene }}"
@@ -865,8 +888,6 @@ action:
                         transition: 2
               # Set brightness & color temperature directly
               default:
-                - variables:
-                    automation_last_context: "{{ context.id }}"
                 - service: light.turn_on
                   target: !input light_target
                   data:
@@ -910,31 +931,18 @@ action:
           state: "off"
 
         # Manual override protection:
-        # Check if the last context that turned the light on matches this automation.
-        # If the light is on but was NOT turned on by this automation, skip turn-off.
+        # HA stores context.parent_id on every state change.
+        # When this automation turns the light on, the light's state context
+        # carries this automation's run ID as parent_id.
+        # If manual_override_protection is enabled and the light is currently on
+        # but its last context parent_id does NOT match this automation's id,
+        # it was switched on manually → skip turn-off.
         - if:
             - condition: template
               value_template: >
-                {% set light_entity = namespace(id='') %}
-                {% set t = !input light_target %}
-                {% if t.entity_id is defined %}
-                  {% set light_entity.id = t.entity_id %}
-                {% elif t.area_id is defined %}
-                  {% set light_entity.id = '' %}
-                {% endif %}
-                {% if manual_override_protection_v and light_entity.id != '' %}
-                  {% set last_ctx = state_attr(light_entity.id, 'context') %}
-                  {% set light_on = states(light_entity.id) == 'on' %}
-                  {% if light_on and last_ctx is not none %}
-                    {{ last_ctx.get('id','') != automation_last_context | default('') }}
-                  {% else %}
-                    false
-                  {% endif %}
-                {% else %}
-                  false
-                {% endif %}
+                {{ manual_override_protection_v and
+                   automation_turned_light_on_v == false }}
           then:
-            # Light was turned on manually — skip automatic turn-off
             - stop: "Manual override detected – skipping automatic turn-off"
 
         - service: light.turn_off
