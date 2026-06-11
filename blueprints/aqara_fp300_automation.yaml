@@ -1,5 +1,5 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control (Advanced) v1.4.0"
+  name: "Aqara FP300 – Light & Climate Control (Advanced) v1.4.1"
   description: >
     Fully automated light and climate control powered by the Aqara FP300 mmWave presence sensor.
 
