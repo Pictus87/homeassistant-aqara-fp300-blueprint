@@ -1,0 +1,931 @@
+blueprint:
+  name: "Aqara FP300 – Licht & Temperatur (Erweitert)"
+  description: >
+    Vollautomatische Licht- und Temperatursteuerung mit dem Aqara FP300 Präsenzsensor.
+
+
+    **Lichtsteuerung**
+
+    - Licht ein bei Präsenz + Helligkeit unter Schwellenwert
+
+    - 3 Tageszeitprofile (Morgen / Tag / Abend) mit Helligkeit & Farbtemperatur
+      ODER optionale Szenen pro Profil
+
+    - Getrennte Profile für Werktage vs. Wochenende
+
+    - Konfigurierbare Mindest-Einschaltdauer (kein sofortiges Aus bei kurzer Abwesenheit)
+
+    - Konfigurierbare Ausschaltverzögerung
+
+
+    **Temperatursteuerung** (optional)
+
+    - Komforttemperatur bei Präsenz
+
+    - Getrennte Komforttemperatur für Wochenende
+
+    - Absenktemperatur nach kurzer Abwesenheit
+
+    - Eco-Temperatur nach längerer Abwesenheit
+
+
+    **Zonen-Support** (optional)
+
+    - Bis zu 2 zusätzliche FP300-Zonen/-Sensoren können separat ein zweites Licht steuern
+
+    - Jede Zone hat eigene Ausschaltverzögerung
+
+
+    **Voraussetzungen:** Aqara FP300 als `binary_sensor` (Präsenz) und optional
+    `sensor` (Lux) in Home Assistant integriert.
+
+  domain: automation
+  source_url: https://github.com/home-assistant/core
+
+  input:
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 1 – SENSOREN
+    # ══════════════════════════════════════════════════════
+    section_sensors:
+      name: "1 · Sensoren"
+      icon: mdi:motion-sensor
+      input:
+
+        presence_sensor:
+          name: "Aqara FP300 – Haupt-Präsenzsensor"
+          description: "binary_sensor des FP300 (Gerät oder Raum-Präsenz)"
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: occupancy
+
+        illuminance_sensor:
+          name: "Helligkeitssensor (Lux) – optional"
+          description: "Lux-Sensor des FP300 oder extern. Leer = Helligkeitsprüfung deaktiviert."
+          default: ""
+          selector:
+            entity:
+              domain: sensor
+              device_class: illuminance
+
+        illuminance_threshold:
+          name: "Helligkeitsschwelle (Lux)"
+          description: "Licht schaltet nur ein, wenn Lux UNTER diesem Wert."
+          default: 50
+          selector:
+            number:
+              min: 0
+              max: 2000
+              unit_of_measurement: lx
+              mode: slider
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 2 – LICHT ALLGEMEIN
+    # ══════════════════════════════════════════════════════
+    section_light_general:
+      name: "2 · Licht – Allgemein"
+      icon: mdi:lightbulb-on
+      input:
+
+        light_target:
+          name: "Haupt-Licht / Lichtgruppe"
+          selector:
+            target:
+              entity:
+                domain: light
+
+        light_off_delay:
+          name: "Ausschaltverzögerung (Sekunden)"
+          description: "Wie lange bleibt das Licht nach dem Verlassen noch an?"
+          default: 120
+          selector:
+            number:
+              min: 0
+              max: 3600
+              unit_of_measurement: s
+              mode: slider
+
+        light_min_on_duration:
+          name: "Mindest-Einschaltdauer (Sekunden)"
+          description: >
+            Das Licht bleibt mindestens diese Zeit an, auch wenn die Person
+            den Raum sofort wieder verlässt (z.B. kurzer Durchgang). 0 = deaktiviert.
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 600
+              unit_of_measurement: s
+              mode: slider
+
+        use_scenes:
+          name: "Szenen statt Helligkeit/Farbtemperatur verwenden"
+          description: >
+            Wenn aktiviert, werden die unten konfigurierten Szenen aufgerufen
+            statt Helligkeit und Farbtemperatur direkt zu setzen.
+          default: false
+          selector:
+            boolean: {}
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 3 – TAGESZEITPROFILE (Werktag)
+    # ══════════════════════════════════════════════════════
+    section_profiles_weekday:
+      name: "3 · Tageszeitprofile – Werktag (Mo–Fr)"
+      icon: mdi:weather-sunny
+      input:
+
+        # ── Morgen ──────────────────────────────────────
+        morning_start:
+          name: "Morgen – Startzeit"
+          default: "06:00:00"
+          selector:
+            time: {}
+
+        morning_brightness:
+          name: "Morgen – Helligkeit (%)"
+          default: 60
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        morning_color_temp:
+          name: "Morgen – Farbtemperatur (K)"
+          description: "Neutral-warm (z.B. 3500 K)"
+          default: 3500
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        morning_scene:
+          name: "Morgen – Szene (optional)"
+          description: "Wird nur verwendet wenn 'Szenen verwenden' aktiv ist."
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+        # ── Tag ─────────────────────────────────────────
+        day_start:
+          name: "Tag – Startzeit"
+          default: "09:00:00"
+          selector:
+            time: {}
+
+        day_brightness:
+          name: "Tag – Helligkeit (%)"
+          default: 100
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        day_color_temp:
+          name: "Tag – Farbtemperatur (K)"
+          description: "Kühles Tageslichtweiß (z.B. 5000 K)"
+          default: 5000
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        day_scene:
+          name: "Tag – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+        # ── Abend/Nacht ──────────────────────────────────
+        evening_start:
+          name: "Abend/Nacht – Startzeit"
+          default: "18:00:00"
+          selector:
+            time: {}
+
+        evening_brightness:
+          name: "Abend/Nacht – Helligkeit (%)"
+          default: 30
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        evening_color_temp:
+          name: "Abend/Nacht – Farbtemperatur (K)"
+          description: "Warm & entspannt (z.B. 2700 K)"
+          default: 2700
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        evening_scene:
+          name: "Abend/Nacht – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 4 – WOCHENEND-PROFILE (Sa–So)
+    # ══════════════════════════════════════════════════════
+    section_profiles_weekend:
+      name: "4 · Tageszeitprofile – Wochenende (Sa–So)"
+      icon: mdi:weather-night
+      input:
+
+        weekend_different_profiles:
+          name: "Abweichende Wochenend-Profile aktivieren"
+          description: "Wenn deaktiviert, gelten die Werktags-Profile auch am Wochenende."
+          default: false
+          selector:
+            boolean: {}
+
+        we_morning_start:
+          name: "WE Morgen – Startzeit"
+          default: "08:00:00"
+          selector:
+            time: {}
+
+        we_morning_brightness:
+          name: "WE Morgen – Helligkeit (%)"
+          default: 50
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        we_morning_color_temp:
+          name: "WE Morgen – Farbtemperatur (K)"
+          default: 3000
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        we_morning_scene:
+          name: "WE Morgen – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+        we_day_start:
+          name: "WE Tag – Startzeit"
+          default: "10:00:00"
+          selector:
+            time: {}
+
+        we_day_brightness:
+          name: "WE Tag – Helligkeit (%)"
+          default: 80
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        we_day_color_temp:
+          name: "WE Tag – Farbtemperatur (K)"
+          default: 4500
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        we_day_scene:
+          name: "WE Tag – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+        we_evening_start:
+          name: "WE Abend/Nacht – Startzeit"
+          default: "17:00:00"
+          selector:
+            time: {}
+
+        we_evening_brightness:
+          name: "WE Abend/Nacht – Helligkeit (%)"
+          default: 25
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        we_evening_color_temp:
+          name: "WE Abend/Nacht – Farbtemperatur (K)"
+          default: 2500
+          selector:
+            number:
+              min: 2000
+              max: 6500
+              unit_of_measurement: K
+              mode: slider
+
+        we_evening_scene:
+          name: "WE Abend/Nacht – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 5 – TEMPERATURSTEUERUNG
+    # ══════════════════════════════════════════════════════
+    section_climate:
+      name: "5 · Temperatursteuerung"
+      icon: mdi:thermometer
+      input:
+
+        enable_climate:
+          name: "Temperatursteuerung aktivieren"
+          default: false
+          selector:
+            boolean: {}
+
+        climate_target:
+          name: "Thermostat / Klimagerät"
+          default: ""
+          selector:
+            entity:
+              domain: climate
+
+        temp_comfort:
+          name: "Komforttemperatur Werktag (°C)"
+          default: 21.0
+          selector:
+            number:
+              min: 15
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_comfort_weekend:
+          name: "Komforttemperatur Wochenende (°C)"
+          description: "Gilt nur wenn Wochenend-Profile aktiviert sind."
+          default: 22.0
+          selector:
+            number:
+              min: 15
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_setback_delay:
+          name: "Absenkung – Verzögerung (Minuten)"
+          default: 15
+          selector:
+            number:
+              min: 0
+              max: 120
+              unit_of_measurement: min
+              mode: slider
+
+        temp_setback:
+          name: "Absenktemperatur (°C)"
+          default: 19.0
+          selector:
+            number:
+              min: 10
+              max: 28
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_eco_delay:
+          name: "Eco-Modus – Verzögerung (Minuten)"
+          description: "Gesamtzeit ab Verlassen bis Eco (inkl. Absenkungsverzögerung)."
+          default: 60
+          selector:
+            number:
+              min: 15
+              max: 480
+              unit_of_measurement: min
+              mode: slider
+
+        temp_eco:
+          name: "Eco-Temperatur (°C)"
+          default: 17.0
+          selector:
+            number:
+              min: 10
+              max: 25
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 6 – ZONE 2 (optional)
+    # ══════════════════════════════════════════════════════
+    section_zone2:
+      name: "6 · Zone 2 – Zweiter Sensor/Licht (optional)"
+      icon: mdi:map-marker-radius
+      input:
+
+        enable_zone2:
+          name: "Zone 2 aktivieren"
+          default: false
+          selector:
+            boolean: {}
+
+        zone2_presence_sensor:
+          name: "Zone 2 – Präsenzsensor"
+          description: "z.B. eine spezifische FP300-Zone oder zweiter Sensor."
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: occupancy
+
+        zone2_light_target:
+          name: "Zone 2 – Licht"
+          selector:
+            target:
+              entity:
+                domain: light
+
+        zone2_light_off_delay:
+          name: "Zone 2 – Ausschaltverzögerung (Sekunden)"
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 3600
+              unit_of_measurement: s
+              mode: slider
+
+        zone2_brightness:
+          name: "Zone 2 – Helligkeit (%) – alle Tageszeiten"
+          description: "Feste Helligkeit für Zone 2 (kein Zeitprofil)."
+          default: 70
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        zone2_scene:
+          name: "Zone 2 – Szene (optional, überschreibt Helligkeit)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+    # ══════════════════════════════════════════════════════
+    # ABSCHNITT 7 – ZONE 3 (optional)
+    # ══════════════════════════════════════════════════════
+    section_zone3:
+      name: "7 · Zone 3 – Dritter Sensor/Licht (optional)"
+      icon: mdi:map-marker-radius-outline
+      input:
+
+        enable_zone3:
+          name: "Zone 3 aktivieren"
+          default: false
+          selector:
+            boolean: {}
+
+        zone3_presence_sensor:
+          name: "Zone 3 – Präsenzsensor"
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+              device_class: occupancy
+
+        zone3_light_target:
+          name: "Zone 3 – Licht"
+          selector:
+            target:
+              entity:
+                domain: light
+
+        zone3_light_off_delay:
+          name: "Zone 3 – Ausschaltverzögerung (Sekunden)"
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 3600
+              unit_of_measurement: s
+              mode: slider
+
+        zone3_brightness:
+          name: "Zone 3 – Helligkeit (%)"
+          default: 70
+          selector:
+            number:
+              min: 1
+              max: 100
+              unit_of_measurement: "%"
+              mode: slider
+
+        zone3_scene:
+          name: "Zone 3 – Szene (optional)"
+          default: ""
+          selector:
+            entity:
+              domain: scene
+
+# ══════════════════════════════════════════════════════════
+# VARIABLEN
+# ══════════════════════════════════════════════════════════
+variables:
+  # --- Sensor-Variablen ---
+  illuminance_sensor_v: !input illuminance_sensor
+  illuminance_threshold_v: !input illuminance_threshold
+  current_lux: >
+    {% if illuminance_sensor_v != '' and illuminance_sensor_v is not none %}
+      {{ states(illuminance_sensor_v) | float(0) }}
+    {% else %}
+      0
+    {% endif %}
+  lux_ok: >
+    {% if illuminance_sensor_v != '' and illuminance_sensor_v is not none %}
+      {{ current_lux < illuminance_threshold_v }}
+    {% else %}
+      true
+    {% endif %}
+
+  # --- Szenen-Flag ---
+  use_scenes_v: !input use_scenes
+
+  # --- Wochentag-Erkennung ---
+  weekend_different_profiles_v: !input weekend_different_profiles
+  is_weekend: "{{ now().weekday() >= 5 }}"
+  use_weekend_profile: "{{ weekend_different_profiles_v and is_weekend }}"
+
+  # --- Werktags-Profil-Inputs ---
+  morning_start_v: !input morning_start
+  day_start_v: !input day_start
+  evening_start_v: !input evening_start
+  morning_brightness_v: !input morning_brightness
+  day_brightness_v: !input day_brightness
+  evening_brightness_v: !input evening_brightness
+  morning_color_temp_v: !input morning_color_temp
+  day_color_temp_v: !input day_color_temp
+  evening_color_temp_v: !input evening_color_temp
+  morning_scene_v: !input morning_scene
+  day_scene_v: !input day_scene
+  evening_scene_v: !input evening_scene
+
+  # --- Wochenend-Profil-Inputs ---
+  we_morning_start_v: !input we_morning_start
+  we_day_start_v: !input we_day_start
+  we_evening_start_v: !input we_evening_start
+  we_morning_brightness_v: !input we_morning_brightness
+  we_day_brightness_v: !input we_day_brightness
+  we_evening_brightness_v: !input we_evening_brightness
+  we_morning_color_temp_v: !input we_morning_color_temp
+  we_day_color_temp_v: !input we_day_color_temp
+  we_evening_color_temp_v: !input we_evening_color_temp
+  we_morning_scene_v: !input we_morning_scene
+  we_day_scene_v: !input we_day_scene
+  we_evening_scene_v: !input we_evening_scene
+
+  # --- Aktives Zeitprofil ermitteln ---
+  active_morning_start: "{{ we_morning_start_v if use_weekend_profile else morning_start_v }}"
+  active_day_start: "{{ we_day_start_v if use_weekend_profile else day_start_v }}"
+  active_evening_start: "{{ we_evening_start_v if use_weekend_profile else evening_start_v }}"
+
+  time_profile: >
+    {% set t = now().strftime('%H:%M:%S') %}
+    {% if t >= active_evening_start %}
+      evening
+    {% elif t >= active_day_start %}
+      day
+    {% else %}
+      morning
+    {% endif %}
+
+  # --- Ziel-Helligkeit & Farbtemperatur ---
+  target_brightness: >
+    {% if use_weekend_profile %}
+      {% if time_profile == 'evening' %}{{ we_evening_brightness_v }}
+      {% elif time_profile == 'day' %}{{ we_day_brightness_v }}
+      {% else %}{{ we_morning_brightness_v }}{% endif %}
+    {% else %}
+      {% if time_profile == 'evening' %}{{ evening_brightness_v }}
+      {% elif time_profile == 'day' %}{{ day_brightness_v }}
+      {% else %}{{ morning_brightness_v }}{% endif %}
+    {% endif %}
+
+  target_color_temp_k: >
+    {% if use_weekend_profile %}
+      {% if time_profile == 'evening' %}{{ we_evening_color_temp_v }}
+      {% elif time_profile == 'day' %}{{ we_day_color_temp_v }}
+      {% else %}{{ we_morning_color_temp_v }}{% endif %}
+    {% else %}
+      {% if time_profile == 'evening' %}{{ evening_color_temp_v }}
+      {% elif time_profile == 'day' %}{{ day_color_temp_v }}
+      {% else %}{{ morning_color_temp_v }}{% endif %}
+    {% endif %}
+
+  target_color_temp_mireds: "{{ (1000000 / (target_color_temp_k | int)) | int }}"
+
+  # --- Aktive Szene ---
+  target_scene: >
+    {% if use_weekend_profile %}
+      {% if time_profile == 'evening' %}{{ we_evening_scene_v }}
+      {% elif time_profile == 'day' %}{{ we_day_scene_v }}
+      {% else %}{{ we_morning_scene_v }}{% endif %}
+    {% else %}
+      {% if time_profile == 'evening' %}{{ evening_scene_v }}
+      {% elif time_profile == 'day' %}{{ day_scene_v }}
+      {% else %}{{ morning_scene_v }}{% endif %}
+    {% endif %}
+
+  # --- Klima ---
+  enable_climate_v: !input enable_climate
+  climate_target_v: !input climate_target
+  temp_comfort_v: !input temp_comfort
+  temp_comfort_weekend_v: !input temp_comfort_weekend
+  active_temp_comfort: "{{ temp_comfort_weekend_v if use_weekend_profile else temp_comfort_v }}"
+
+  # --- Mindest-Einschaltdauer ---
+  light_min_on_duration_v: !input light_min_on_duration
+
+  # --- Zonen ---
+  enable_zone2_v: !input enable_zone2
+  zone2_presence_sensor_v: !input zone2_presence_sensor
+  zone2_brightness_v: !input zone2_brightness
+  zone2_scene_v: !input zone2_scene
+  zone2_light_off_delay_v: !input zone2_light_off_delay
+
+  enable_zone3_v: !input enable_zone3
+  zone3_presence_sensor_v: !input zone3_presence_sensor
+  zone3_brightness_v: !input zone3_brightness
+  zone3_scene_v: !input zone3_scene
+  zone3_light_off_delay_v: !input zone3_light_off_delay
+
+# ══════════════════════════════════════════════════════════
+# TRIGGER
+# ══════════════════════════════════════════════════════════
+trigger:
+  # Haupt-Sensor
+  - platform: state
+    entity_id: !input presence_sensor
+    to: "on"
+    id: "presence_on"
+  - platform: state
+    entity_id: !input presence_sensor
+    to: "off"
+    id: "presence_off"
+
+  # Zone 2 – nur wenn aktiviert; HA ignoriert leere entity_id nicht zuverlässig,
+  # daher via condition abgesichert
+  - platform: state
+    entity_id: !input zone2_presence_sensor
+    to: "on"
+    id: "zone2_on"
+  - platform: state
+    entity_id: !input zone2_presence_sensor
+    to: "off"
+    id: "zone2_off"
+
+  # Zone 3
+  - platform: state
+    entity_id: !input zone3_presence_sensor
+    to: "on"
+    id: "zone3_on"
+  - platform: state
+    entity_id: !input zone3_presence_sensor
+    to: "off"
+    id: "zone3_off"
+
+# ══════════════════════════════════════════════════════════
+# AKTIONEN
+# ══════════════════════════════════════════════════════════
+action:
+  - choose:
+
+    # ──────────────────────────────────────────────────────
+    # HAUPT-SENSOR: PRÄSENZ ERKANNT
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "presence_on"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ lux_ok }}"
+          then:
+            - choose:
+                # Szene aufrufen
+                - conditions:
+                    - condition: template
+                      value_template: "{{ use_scenes_v and target_scene != '' }}"
+                  sequence:
+                    - service: scene.turn_on
+                      target:
+                        entity_id: "{{ target_scene }}"
+                      data:
+                        transition: 2
+              # Helligkeit/Farbtemperatur direkt
+              default:
+                - service: light.turn_on
+                  target: !input light_target
+                  data:
+                    brightness_pct: "{{ target_brightness }}"
+                    color_temp: "{{ target_color_temp_mireds }}"
+                    transition: 2
+
+        # Komforttemperatur setzen
+        - if:
+            - condition: template
+              value_template: "{{ enable_climate_v and climate_target_v != '' }}"
+          then:
+            - service: climate.set_temperature
+              target:
+                entity_id: "{{ climate_target_v }}"
+              data:
+                temperature: "{{ active_temp_comfort }}"
+
+    # ──────────────────────────────────────────────────────
+    # HAUPT-SENSOR: PRÄSENZ WEG
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "presence_off"
+      sequence:
+        # Mindest-Einschaltdauer abwarten (falls > 0)
+        - if:
+            - condition: template
+              value_template: "{{ light_min_on_duration_v | int > 0 }}"
+          then:
+            - delay:
+                seconds: "{{ light_min_on_duration_v }}"
+
+        # Ausschaltverzögerung abwarten
+        - delay:
+            seconds: !input light_off_delay
+
+        # Nur ausschalten wenn Raum noch leer
+        - condition: state
+          entity_id: !input presence_sensor
+          state: "off"
+        - service: light.turn_off
+          target: !input light_target
+          data:
+            transition: 3
+
+        # Temperatursteuerung – Absenkung & Eco
+        - if:
+            - condition: template
+              value_template: "{{ enable_climate_v and climate_target_v != '' }}"
+          then:
+            - delay:
+                minutes: !input temp_setback_delay
+            - condition: state
+              entity_id: !input presence_sensor
+              state: "off"
+            - service: climate.set_temperature
+              target:
+                entity_id: "{{ climate_target_v }}"
+              data:
+                temperature: !input temp_setback
+
+            # Eco: restliche Zeit bis eco_delay abwarten
+            # (eco_delay ist Gesamtzeit ab Verlassen)
+            - delay:
+                minutes: >
+                  {{ [(!input temp_eco_delay | int) - (!input temp_setback_delay | int), 1] | max }}
+            - condition: state
+              entity_id: !input presence_sensor
+              state: "off"
+            - service: climate.set_temperature
+              target:
+                entity_id: "{{ climate_target_v }}"
+              data:
+                temperature: !input temp_eco
+
+    # ──────────────────────────────────────────────────────
+    # ZONE 2: PRÄSENZ ERKANNT
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "zone2_on"
+        - condition: template
+          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ lux_ok }}"
+          then:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ zone2_scene_v != '' }}"
+                  sequence:
+                    - service: scene.turn_on
+                      target:
+                        entity_id: "{{ zone2_scene_v }}"
+                      data:
+                        transition: 2
+              default:
+                - service: light.turn_on
+                  target: !input zone2_light_target
+                  data:
+                    brightness_pct: "{{ zone2_brightness_v }}"
+                    transition: 2
+
+    # ──────────────────────────────────────────────────────
+    # ZONE 2: PRÄSENZ WEG
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "zone2_off"
+        - condition: template
+          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' }}"
+      sequence:
+        - delay:
+            seconds: "{{ zone2_light_off_delay_v }}"
+        - condition: template
+          value_template: >
+            {{ states(zone2_presence_sensor_v) == 'off' }}
+        - service: light.turn_off
+          target: !input zone2_light_target
+          data:
+            transition: 3
+
+    # ──────────────────────────────────────────────────────
+    # ZONE 3: PRÄSENZ ERKANNT
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "zone3_on"
+        - condition: template
+          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: "{{ lux_ok }}"
+          then:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ zone3_scene_v != '' }}"
+                  sequence:
+                    - service: scene.turn_on
+                      target:
+                        entity_id: "{{ zone3_scene_v }}"
+                      data:
+                        transition: 2
+              default:
+                - service: light.turn_on
+                  target: !input zone3_light_target
+                  data:
+                    brightness_pct: "{{ zone3_brightness_v }}"
+                    transition: 2
+
+    # ──────────────────────────────────────────────────────
+    # ZONE 3: PRÄSENZ WEG
+    # ──────────────────────────────────────────────────────
+    - conditions:
+        - condition: trigger
+          id: "zone3_off"
+        - condition: template
+          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' }}"
+      sequence:
+        - delay:
+            seconds: "{{ zone3_light_off_delay_v }}"
+        - condition: template
+          value_template: >
+            {{ states(zone3_presence_sensor_v) == 'off' }}
+        - service: light.turn_off
+          target: !input zone3_light_target
+          data:
+            transition: 3
+
+mode: parallel
+max: 4
