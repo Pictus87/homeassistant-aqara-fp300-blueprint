@@ -1,5 +1,5 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control (Advanced) v2.0.0"
+  name: "Aqara FP300 – Light & Climate Control (Advanced) v2.1.0"
   description: >
     Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
@@ -119,6 +119,18 @@ blueprint:
           default: true
           selector:
             boolean: {}
+
+        override_helper:
+          name: "Manual Override – Helper (input_boolean)"
+          description: >
+            Create a Helper of type Toggle (input_boolean) in HA and select it here.
+            This blueprint uses it to track whether the light was turned on by the
+            automation or manually. Only required when Manual Override Protection is enabled.
+            Example name: input_boolean.fp300_automation_controlled
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
 
     # ══════════════════════════════════════════════════════
     # SECTION 3 – TIME-OF-DAY PROFILES (Weekday)
@@ -532,20 +544,7 @@ variables:
   # --- Manual override protection ---
   manual_override_protection_v: !input manual_override_protection
   light_entity_id_v: !input light_entity_id
-  # True when the light is currently on AND was last turned on by this automation
-  # (detected via context.parent_id matching this automation's entity_id)
-  automation_turned_light_on_v: >
-    {% if manual_override_protection_v and light_entity_id_v != '' %}
-      {% set ctx = state_attr(light_entity_id_v, 'context') %}
-      {% if ctx is not none and states(light_entity_id_v) == 'on' %}
-        {{ this.entity_id in (ctx.get('parent_id','') | string) or
-           ctx.get('user_id') is none }}
-      {% else %}
-        true
-      {% endif %}
-    {% else %}
-      true
-    {% endif %}
+  override_helper_v: !input override_helper
 
   # --- Weekend detection ---
   weekend_different_profiles_v: !input weekend_different_profiles
@@ -705,6 +704,14 @@ action:
                         entity_id: "{{ target_scene }}"
                       data:
                         transition: 2
+                    # Mark light as automation-controlled
+                    - if:
+                        - condition: template
+                          value_template: "{{ manual_override_protection_v and light_entity_id_v != '' }}"
+                      then:
+                        - service: input_boolean.turn_on
+                          target:
+                            entity_id: "{{ override_helper_v }}"
               # Set brightness & color temperature directly
               default:
                 - service: light.turn_on
@@ -713,6 +720,14 @@ action:
                     brightness_pct: "{{ target_brightness }}"
                     color_temp: "{{ target_color_temp_mireds }}"
                     transition: 2
+                # Mark light as automation-controlled
+                - if:
+                    - condition: template
+                      value_template: "{{ manual_override_protection_v and light_entity_id_v != '' }}"
+                  then:
+                    - service: input_boolean.turn_on
+                      target:
+                        entity_id: "{{ override_helper_v }}"
 
         # Set comfort temperature
         - if:
@@ -750,19 +765,27 @@ action:
           state: "off"
 
         # Manual override protection:
-        # HA stores context.parent_id on every state change.
-        # When this automation turns the light on, the light's state context
-        # carries this automation's run ID as parent_id.
-        # If manual_override_protection is enabled and the light is currently on
-        # but its last context parent_id does NOT match this automation's id,
-        # it was switched on manually → skip turn-off.
+        # input_boolean (override_helper) is turned ON by this automation when it
+        # switches the light on, and turned OFF when the light goes off.
+        # If the helper is OFF when presence clears, the light was turned on manually
+        # → skip automatic turn-off.
         - if:
             - condition: template
               value_template: >
-                {{ manual_override_protection_v and
-                   automation_turned_light_on_v == false }}
+                {{ manual_override_protection_v and light_entity_id_v != '' and
+                   states(override_helper_v) == 'off' and
+                   states(light_entity_id_v) == 'on' }}
           then:
             - stop: "Manual override detected – skipping automatic turn-off"
+
+        # Reset the automation-controlled flag before turning off
+        - if:
+            - condition: template
+              value_template: "{{ manual_override_protection_v and light_entity_id_v != '' }}"
+          then:
+            - service: input_boolean.turn_off
+              target:
+                entity_id: "{{ override_helper_v }}"
 
         - service: light.turn_off
           target: !input light_target
