@@ -1,5 +1,5 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control (Advanced) v1.5.0"
+  name: "Aqara FP300 – Light & Climate Control (Advanced) v2.0.0"
   description: >
     Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
@@ -8,9 +8,6 @@ blueprint:
     Minimum on-duration · Configurable turn-off delay
 
     **Climate (optional):** Comfort → Setback → Eco temperature stages based on presence
-
-    **Multi-Zone (optional):** Up to 2 additional zones with independent sensors and lights
-
     Requires FP300 as `binary_sensor` (occupancy), optionally `sensor` (illuminance).
 
   domain: automation
@@ -507,124 +504,6 @@ blueprint:
               unit_of_measurement: "°C"
               mode: slider
 
-    # ══════════════════════════════════════════════════════
-    # SECTION 6 – ZONE 2 (optional)
-    # ══════════════════════════════════════════════════════
-    section_zone2:
-      name: "6 · Zone 2 – Second Sensor / Light (optional)"
-      icon: mdi:map-marker-radius
-      input:
-
-        enable_zone2:
-          name: "Enable Zone 2"
-          default: false
-          selector:
-            boolean: {}
-
-        zone2_presence_sensor:
-          name: "Zone 2 – Presence Sensor"
-          description: >
-            Presence sensor for Zone 2 (e.g. a specific FP300 sub-zone).
-            Must be set when Zone 2 is enabled — set to the same sensor as
-            the main sensor if you only want to control a second light.
-          selector:
-            entity:
-              domain: binary_sensor
-              device_class: occupancy
-
-        zone2_light_target:
-          name: "Zone 2 – Light"
-          description: "Light entity for Zone 2. Leave empty if Zone 2 is disabled."
-          default: ""
-          selector:
-            entity:
-              domain: light
-
-        zone2_light_off_delay:
-          name: "Zone 2 – Turn-Off Delay (seconds)"
-          default: 60
-          selector:
-            number:
-              min: 0
-              max: 3600
-              unit_of_measurement: s
-              mode: slider
-
-        zone2_brightness:
-          name: "Zone 2 – Brightness (%) – all times of day"
-          description: "Fixed brightness for Zone 2 (no time profile)."
-          default: 70
-          selector:
-            number:
-              min: 1
-              max: 100
-              unit_of_measurement: "%"
-              mode: slider
-
-        zone2_scene:
-          name: "Zone 2 – Scene (optional, overrides brightness)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
-
-    # ══════════════════════════════════════════════════════
-    # SECTION 7 – ZONE 3 (optional)
-    # ══════════════════════════════════════════════════════
-    section_zone3:
-      name: "7 · Zone 3 – Third Sensor / Light (optional)"
-      icon: mdi:map-marker-radius-outline
-      input:
-
-        enable_zone3:
-          name: "Enable Zone 3"
-          default: false
-          selector:
-            boolean: {}
-
-        zone3_presence_sensor:
-          name: "Zone 3 – Presence Sensor"
-          description: >
-            Presence sensor for Zone 3. Must be set when Zone 3 is enabled.
-          selector:
-            entity:
-              domain: binary_sensor
-              device_class: occupancy
-
-        zone3_light_target:
-          name: "Zone 3 – Light"
-          description: "Light entity for Zone 3. Leave empty if Zone 3 is disabled."
-          default: ""
-          selector:
-            entity:
-              domain: light
-
-        zone3_light_off_delay:
-          name: "Zone 3 – Turn-Off Delay (seconds)"
-          default: 60
-          selector:
-            number:
-              min: 0
-              max: 3600
-              unit_of_measurement: s
-              mode: slider
-
-        zone3_brightness:
-          name: "Zone 3 – Brightness (%)"
-          default: 70
-          selector:
-            number:
-              min: 1
-              max: 100
-              unit_of_measurement: "%"
-              mode: slider
-
-        zone3_scene:
-          name: "Zone 3 – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
 # ══════════════════════════════════════════════════════════
 # VARIABLES
@@ -786,21 +665,6 @@ variables:
   # --- Minimum on-duration ---
   light_min_on_duration_v: !input light_min_on_duration
 
-  # --- Zones ---
-  enable_zone2_v: !input enable_zone2
-  zone2_presence_sensor_v: !input zone2_presence_sensor
-  zone2_light_target_v: !input zone2_light_target
-  zone2_brightness_v: !input zone2_brightness
-  zone2_scene_v: !input zone2_scene
-  zone2_light_off_delay_v: !input zone2_light_off_delay
-
-  enable_zone3_v: !input enable_zone3
-  zone3_presence_sensor_v: !input zone3_presence_sensor
-  zone3_light_target_v: !input zone3_light_target
-  zone3_brightness_v: !input zone3_brightness
-  zone3_scene_v: !input zone3_scene
-  zone3_light_off_delay_v: !input zone3_light_off_delay
-
 # ══════════════════════════════════════════════════════════
 # TRIGGER
 # ══════════════════════════════════════════════════════════
@@ -813,28 +677,6 @@ trigger:
     entity_id: !input presence_sensor
     to: "off"
     id: "presence_off"
-
-  # Zone 2 — only fires when zone2_presence_sensor is configured
-  # Actions are guarded by enable_zone2_v condition
-  - platform: state
-    entity_id: !input zone2_presence_sensor
-    to: "on"
-    id: "zone2_on"
-  - platform: state
-    entity_id: !input zone2_presence_sensor
-    to: "off"
-    id: "zone2_off"
-
-  # Zone 3
-  - platform: state
-    entity_id: !input zone3_presence_sensor
-    to: "on"
-    id: "zone3_on"
-  - platform: state
-    entity_id: !input zone3_presence_sensor
-    to: "off"
-    id: "zone3_off"
-
 # ══════════════════════════════════════════════════════════
 # ACTIONS
 # ══════════════════════════════════════════════════════════
@@ -955,105 +797,5 @@ action:
               data:
                 temperature: !input temp_eco
 
-    # ──────────────────────────────────────────────────────
-    # ZONE 2: PRESENCE DETECTED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "zone2_on"
-        - condition: template
-          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' and zone2_light_target_v != '' }}"
-      sequence:
-        - if:
-            - condition: template
-              value_template: "{{ lux_ok }}"
-          then:
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: "{{ zone2_scene_v != '' }}"
-                  sequence:
-                    - service: scene.turn_on
-                      target:
-                        entity_id: "{{ zone2_scene_v }}"
-                      data:
-                        transition: 2
-              default:
-                - service: light.turn_on
-                  target:
-                    entity_id: "{{ zone2_light_target_v }}"
-                  data:
-                    brightness_pct: "{{ zone2_brightness_v }}"
-                    transition: 2
 
-    # ──────────────────────────────────────────────────────
-    # ZONE 2: PRESENCE CLEARED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "zone2_off"
-        - condition: template
-          value_template: "{{ enable_zone2_v and zone2_presence_sensor_v != '' and zone2_light_target_v != '' }}"
-      sequence:
-        - delay:
-            seconds: "{{ zone2_light_off_delay_v }}"
-        - condition: template
-          value_template: "{{ states(zone2_presence_sensor_v) == 'off' }}"
-        - service: light.turn_off
-          target:
-            entity_id: "{{ zone2_light_target_v }}"
-          data:
-            transition: 3
-
-    # ──────────────────────────────────────────────────────
-    # ZONE 3: PRESENCE DETECTED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "zone3_on"
-        - condition: template
-          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' and zone3_light_target_v != '' }}"
-      sequence:
-        - if:
-            - condition: template
-              value_template: "{{ lux_ok }}"
-          then:
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: "{{ zone3_scene_v != '' }}"
-                  sequence:
-                    - service: scene.turn_on
-                      target:
-                        entity_id: "{{ zone3_scene_v }}"
-                      data:
-                        transition: 2
-              default:
-                - service: light.turn_on
-                  target:
-                    entity_id: "{{ zone3_light_target_v }}"
-                  data:
-                    brightness_pct: "{{ zone3_brightness_v }}"
-                    transition: 2
-
-    # ──────────────────────────────────────────────────────
-    # ZONE 3: PRESENCE CLEARED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "zone3_off"
-        - condition: template
-          value_template: "{{ enable_zone3_v and zone3_presence_sensor_v != '' and zone3_light_target_v != '' }}"
-      sequence:
-        - delay:
-            seconds: "{{ zone3_light_off_delay_v }}"
-        - condition: template
-          value_template: "{{ states(zone3_presence_sensor_v) == 'off' }}"
-        - service: light.turn_off
-          target:
-            entity_id: "{{ zone3_light_target_v }}"
-          data:
-            transition: 3
-
-mode: parallel
-max: 4
+mode: restart
