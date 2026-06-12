@@ -1,44 +1,17 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control (Advanced) v1.4.1"
+  name: "Aqara FP300 – Light & Climate Control (Advanced) v1.5.0"
   description: >
-    Fully automated light and climate control powered by the Aqara FP300 mmWave presence sensor.
+    Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
+    **Light:** 4 time-of-day profiles (Morning / Day / Evening / Night) with brightness,
+    color temperature or scenes · Weekday & Weekend profiles · Manual override protection ·
+    Minimum on-duration · Configurable turn-off delay
 
-    **Light Control**
+    **Climate (optional):** Comfort → Setback → Eco temperature stages based on presence
 
-    - Turns light on when presence is detected AND illuminance is below a configurable threshold
+    **Multi-Zone (optional):** Up to 2 additional zones with independent sensors and lights
 
-    - 4 time-of-day profiles (Morning / Day / Evening / Night) with brightness & color temperature
-      OR optional scenes per profile
-
-    - Separate profiles for Weekdays vs. Weekend
-
-    - Manual override protection — automation skips if light was turned on manually
-
-    - Configurable minimum on-duration (prevents flickering on short walk-throughs)
-
-    - Configurable turn-off delay after room is vacated
-
-
-    **Climate Control** (optional)
-
-    - Comfort temperature when presence is detected
-
-    - Separate comfort temperature for weekends
-
-    - Setback temperature after a short absence
-
-    - Eco temperature after extended absence
-
-
-    **Multi-Zone Support** (optional)
-
-    - Up to 2 additional zones (Zone 2 & Zone 3), each with an independent
-      presence sensor, light, turn-off delay and optional scene
-
-
-    **Requirements:** Aqara FP300 integrated as `binary_sensor` (occupancy) and optionally
-    as `sensor` (illuminance) in Home Assistant.
+    Requires FP300 as `binary_sensor` (occupancy), optionally `sensor` (illuminance).
 
   domain: automation
   source_url: https://github.com/Pictus87/ha-blueprint-aqara-fp300
@@ -550,8 +523,10 @@ blueprint:
 
         zone2_presence_sensor:
           name: "Zone 2 – Presence Sensor"
-          description: "e.g. a specific FP300 sub-zone or a second sensor."
-          default: ""
+          description: >
+            Presence sensor for Zone 2 (e.g. a specific FP300 sub-zone).
+            Must be set when Zone 2 is enabled — set to the same sensor as
+            the main sensor if you only want to control a second light.
           selector:
             entity:
               domain: binary_sensor
@@ -609,7 +584,8 @@ blueprint:
 
         zone3_presence_sensor:
           name: "Zone 3 – Presence Sensor"
-          default: ""
+          description: >
+            Presence sensor for Zone 3. Must be set when Zone 3 is enabled.
           selector:
             entity:
               domain: binary_sensor
@@ -838,7 +814,8 @@ trigger:
     to: "off"
     id: "presence_off"
 
-  # Zone 2 — guarded via condition when disabled
+  # Zone 2 — only fires when zone2_presence_sensor is configured
+  # Actions are guarded by enable_zone2_v condition
   - platform: state
     entity_id: !input zone2_presence_sensor
     to: "on"
