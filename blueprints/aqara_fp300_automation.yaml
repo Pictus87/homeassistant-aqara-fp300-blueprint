@@ -1,5 +1,5 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control v3.2.0"
+  name: "Aqara FP300 – Light & Climate Control v3.3.0"
   description: >
     Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
@@ -381,8 +381,8 @@ blueprint:
           selector:
             time: {}
 
-        climate_night_end:
-          name: "Night Mode – End Time"
+        climate_day_start:
+          name: "Day Mode – Start Time"
           description: "From this time onward, day temperatures are used again."
           default: "07:00:00"
           selector:
@@ -581,7 +581,7 @@ variables:
 
   # Climate time window
   climate_night_start_v: !input climate_night_start
-  climate_night_end_v: !input climate_night_end
+  climate_day_start_v: !input climate_day_start
 
   # Day temperatures
   temp_comfort_v: !input temp_comfort
@@ -662,7 +662,7 @@ variables:
   # True when current time is within the night climate window
   is_climate_night: >
     {% set t = now().strftime('%H:%M:%S') %}
-    {{ t >= climate_night_start_v or t < climate_night_end_v }}
+    {{ t >= climate_night_start_v or t < climate_day_start_v }}
 
   active_temp_comfort: >
     {% if is_climate_night %}
