@@ -1,10 +1,10 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control v4.0.0"
+  name: "Aqara FP300 – Light & Climate Control v5.0.0"
   description: >
     Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
-    **Light:** 4 time-of-day profiles (Morning / Day / Evening / Night) with brightness,
-    color temperature or scenes · Weekday & Weekend profiles · Configurable turn-off delay
+    **Light:** 4 time-of-day profiles (Morning / Day / Evening / Night) with brightness
+    and color temperature · Weekday & Weekend profiles · Configurable turn-off delay
 
     **Climate (optional):** Day & Night temperature profiles with Comfort → Setback → Eco stages
 
@@ -23,7 +23,6 @@ blueprint:
 
         presence_sensor:
           name: "Presence Sensor"
-          description: "Aqara FP300 binary_sensor (occupancy)"
           selector:
             entity:
               domain: binary_sensor
@@ -31,7 +30,7 @@ blueprint:
 
         illuminance_sensor:
           name: "Illuminance Sensor (lux) – optional"
-          description: "Leave empty to always turn on light regardless of brightness."
+          description: "Leave empty to always turn on the light."
           default: ""
           selector:
             entity:
@@ -40,7 +39,7 @@ blueprint:
 
         illuminance_threshold:
           name: "Illuminance Threshold (lux)"
-          description: "Light turns on only when lux is BELOW this value. Ignored if no sensor set."
+          description: "Light turns on only when lux is BELOW this value."
           default: 50
           selector:
             number:
@@ -64,7 +63,6 @@ blueprint:
 
         light_off_delay:
           name: "Turn-Off Delay (seconds)"
-          description: "How long the light stays on after the room is vacated."
           default: 120
           selector:
             number:
@@ -72,12 +70,6 @@ blueprint:
               max: 3600
               unit_of_measurement: s
               mode: slider
-
-        use_scenes:
-          name: "Use Scenes instead of Brightness / Color Temperature"
-          default: false
-          selector:
-            boolean: {}
 
     section_profiles_weekday:
       name: "3 · Time Profiles – Weekday (Mon–Fri)"
@@ -108,12 +100,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        morning_scene:
-          name: "Morning – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         day_start:
           name: "Day – Start Time"
@@ -138,12 +124,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        day_scene:
-          name: "Day – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         evening_start:
           name: "Evening – Start Time"
@@ -168,12 +148,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        evening_scene:
-          name: "Evening – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         night_start:
           name: "Night – Start Time"
@@ -198,12 +172,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        night_scene:
-          name: "Night – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
     section_profiles_weekend:
       name: "4 · Time Profiles – Weekend (Sat–Sun)"
@@ -241,12 +209,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        we_morning_scene:
-          name: "WE Morning – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         we_day_start:
           name: "WE Day – Start Time"
@@ -271,12 +233,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        we_day_scene:
-          name: "WE Day – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         we_evening_start:
           name: "WE Evening – Start Time"
@@ -301,12 +257,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        we_evening_scene:
-          name: "WE Evening – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
         we_night_start:
           name: "WE Night – Start Time"
@@ -331,12 +281,6 @@ blueprint:
               max: 6500
               unit_of_measurement: K
               mode: slider
-        we_night_scene:
-          name: "WE Night – Scene (optional)"
-          default: ""
-          selector:
-            entity:
-              domain: scene
 
     section_climate:
       name: "5 · Climate Control"
@@ -359,14 +303,12 @@ blueprint:
 
         climate_night_start:
           name: "Night Mode – Start Time"
-          description: "From this time onward, night temperatures are used."
           default: "22:00:00"
           selector:
             time: {}
 
         climate_day_start:
           name: "Day Mode – Start Time"
-          description: "From this time onward, day temperatures are used again."
           default: "07:00:00"
           selector:
             time: {}
@@ -384,7 +326,6 @@ blueprint:
 
         temp_comfort_weekend:
           name: "Day – Comfort Temperature Weekend (°C)"
-          description: "Only applies when Weekend Profiles are enabled."
           default: 22.0
           selector:
             number:
@@ -417,7 +358,7 @@ blueprint:
 
         temp_eco_delay:
           name: "Day – Eco Mode Delay (minutes)"
-          description: "Total time after leaving until eco mode. Must be greater than Setback Delay."
+          description: "Total time after leaving. Must be greater than Setback Delay."
           default: 60
           selector:
             number:
@@ -439,7 +380,6 @@ blueprint:
 
         temp_night_comfort:
           name: "Night – Comfort Temperature (°C)"
-          description: "Applied when presence is detected during the night (e.g. sleeping)."
           default: 18.0
           selector:
             number:
@@ -492,62 +432,14 @@ blueprint:
               mode: slider
 
 # ══════════════════════════════════════════════════════════
-# VARIABLES — only static !input assignments here
-# All derived/calculated values are computed inside the actions
-# to avoid whitespace/boolean issues with global variable templates
+# VARIABLES — only values needed inside Jinja2 templates
 # ══════════════════════════════════════════════════════════
 variables:
   illuminance_sensor_v: !input illuminance_sensor
   illuminance_threshold_v: !input illuminance_threshold
-  use_scenes_v: !input use_scenes
   weekend_different_profiles_v: !input weekend_different_profiles
   enable_climate_v: !input enable_climate
   climate_target_v: !input climate_target
-  morning_start_v: !input morning_start
-  day_start_v: !input day_start
-  evening_start_v: !input evening_start
-  night_start_v: !input night_start
-  we_morning_start_v: !input we_morning_start
-  we_day_start_v: !input we_day_start
-  we_evening_start_v: !input we_evening_start
-  we_night_start_v: !input we_night_start
-  morning_brightness_v: !input morning_brightness
-  day_brightness_v: !input day_brightness
-  evening_brightness_v: !input evening_brightness
-  night_brightness_v: !input night_brightness
-  we_morning_brightness_v: !input we_morning_brightness
-  we_day_brightness_v: !input we_day_brightness
-  we_evening_brightness_v: !input we_evening_brightness
-  we_night_brightness_v: !input we_night_brightness
-  morning_color_temp_v: !input morning_color_temp
-  day_color_temp_v: !input day_color_temp
-  evening_color_temp_v: !input evening_color_temp
-  night_color_temp_v: !input night_color_temp
-  we_morning_color_temp_v: !input we_morning_color_temp
-  we_day_color_temp_v: !input we_day_color_temp
-  we_evening_color_temp_v: !input we_evening_color_temp
-  we_night_color_temp_v: !input we_night_color_temp
-  morning_scene_v: !input morning_scene
-  day_scene_v: !input day_scene
-  evening_scene_v: !input evening_scene
-  night_scene_v: !input night_scene
-  we_morning_scene_v: !input we_morning_scene
-  we_day_scene_v: !input we_day_scene
-  we_evening_scene_v: !input we_evening_scene
-  we_night_scene_v: !input we_night_scene
-  climate_night_start_v: !input climate_night_start
-  climate_day_start_v: !input climate_day_start
-  temp_comfort_v: !input temp_comfort
-  temp_comfort_weekend_v: !input temp_comfort_weekend
-  temp_setback_v: !input temp_setback
-  temp_setback_delay_v: !input temp_setback_delay
-  temp_eco_v: !input temp_eco
-  temp_eco_delay_v: !input temp_eco_delay
-  temp_night_comfort_v: !input temp_night_comfort
-  temp_night_setback_v: !input temp_night_setback
-  temp_night_setback_delay_v: !input temp_night_setback_delay
-  temp_night_eco_v: !input temp_night_eco
-  temp_night_eco_delay_v: !input temp_night_eco_delay
 
 # ══════════════════════════════════════════════════════════
 # TRIGGER
@@ -566,179 +458,284 @@ trigger:
 # ACTIONS
 # ══════════════════════════════════════════════════════════
 action:
-  - variables:
-      # Calculated fresh on every trigger inside the action
-      is_weekend: "{{ now().weekday() >= 5 }}"
-      use_weekend: "{{ weekend_different_profiles_v and is_weekend }}"
 
-      lux_ok: >-
-        {% if illuminance_sensor_v != '' and illuminance_sensor_v is not none %}
-          {{ states(illuminance_sensor_v) | float(0) < illuminance_threshold_v | float(50) }}
-        {% else %}
-          true
-        {% endif %}
+  # ── PRESENCE DETECTED ──────────────────────────────────
+  - if:
+      - condition: trigger
+        id: "presence_on"
+    then:
+      - choose:
 
-      time_profile: >-
-        {% set t = now().strftime('%H:%M:%S') %}
-        {% if use_weekend %}
-          {% if t >= we_night_start_v %}night
-          {% elif t >= we_evening_start_v %}evening
-          {% elif t >= we_day_start_v %}day
-          {% else %}morning{% endif %}
-        {% else %}
-          {% if t >= night_start_v %}night
-          {% elif t >= evening_start_v %}evening
-          {% elif t >= day_start_v %}day
-          {% else %}morning{% endif %}
-        {% endif %}
+          # ── Weekday profiles ─────────────────────────
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ now().weekday() < 5 or not weekend_different_profiles_v }}
+            sequence:
+              - choose:
 
-      target_brightness: >-
-        {% if use_weekend %}
-          {% if time_profile == 'night' %}{{ we_night_brightness_v }}
-          {% elif time_profile == 'evening' %}{{ we_evening_brightness_v }}
-          {% elif time_profile == 'day' %}{{ we_day_brightness_v }}
-          {% else %}{{ we_morning_brightness_v }}{% endif %}
-        {% else %}
-          {% if time_profile == 'night' %}{{ night_brightness_v }}
-          {% elif time_profile == 'evening' %}{{ evening_brightness_v }}
-          {% elif time_profile == 'day' %}{{ day_brightness_v }}
-          {% else %}{{ morning_brightness_v }}{% endif %}
-        {% endif %}
+                  # Morning
+                  - conditions:
+                      - condition: time
+                        after: !input morning_start
+                        before: !input day_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input morning_brightness
+                          color_temp_kelvin: !input morning_color_temp
+                          transition: 2
 
-      target_color_temp_mireds: >-
-        {% set k = (
-          we_night_color_temp_v if (use_weekend and time_profile == 'night') else
-          we_evening_color_temp_v if (use_weekend and time_profile == 'evening') else
-          we_day_color_temp_v if (use_weekend and time_profile == 'day') else
-          we_morning_color_temp_v if use_weekend else
-          night_color_temp_v if time_profile == 'night' else
-          evening_color_temp_v if time_profile == 'evening' else
-          day_color_temp_v if time_profile == 'day' else
-          morning_color_temp_v) | int %}
-        {{ (1000000 / k) | int }}
+                  # Day
+                  - conditions:
+                      - condition: time
+                        after: !input day_start
+                        before: !input evening_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input day_brightness
+                          color_temp_kelvin: !input day_color_temp
+                          transition: 2
 
-      target_scene: >-
-        {% if use_weekend %}
-          {% if time_profile == 'night' %}{{ we_night_scene_v }}
-          {% elif time_profile == 'evening' %}{{ we_evening_scene_v }}
-          {% elif time_profile == 'day' %}{{ we_day_scene_v }}
-          {% else %}{{ we_morning_scene_v }}{% endif %}
-        {% else %}
-          {% if time_profile == 'night' %}{{ night_scene_v }}
-          {% elif time_profile == 'evening' %}{{ evening_scene_v }}
-          {% elif time_profile == 'day' %}{{ day_scene_v }}
-          {% else %}{{ morning_scene_v }}{% endif %}
-        {% endif %}
+                  # Evening
+                  - conditions:
+                      - condition: time
+                        after: !input evening_start
+                        before: !input night_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input evening_brightness
+                          color_temp_kelvin: !input evening_color_temp
+                          transition: 2
 
-      is_climate_night: >-
-        {% set t = now().strftime('%H:%M:%S') %}
-        {{ t >= climate_night_start_v or t < climate_day_start_v }}
+                  # Night
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: time
+                            after: !input night_start
+                          - condition: time
+                            before: !input morning_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input night_brightness
+                          color_temp_kelvin: !input night_color_temp
+                          transition: 2
 
-      active_temp_comfort: >-
-        {% if is_climate_night %}{{ temp_night_comfort_v }}
-        {% elif use_weekend %}{{ temp_comfort_weekend_v }}
-        {% else %}{{ temp_comfort_v }}{% endif %}
+          # ── Weekend profiles ─────────────────────────
+          - conditions:
+              - condition: template
+                value_template: >-
+                  {{ now().weekday() >= 5 and weekend_different_profiles_v }}
+            sequence:
+              - choose:
 
-      active_setback_delay: >-
-        {{ temp_night_setback_delay_v | int if is_climate_night else temp_setback_delay_v | int }}
+                  # WE Morning
+                  - conditions:
+                      - condition: time
+                        after: !input we_morning_start
+                        before: !input we_day_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input we_morning_brightness
+                          color_temp_kelvin: !input we_morning_color_temp
+                          transition: 2
 
-      active_temp_setback: >-
-        {{ temp_night_setback_v if is_climate_night else temp_setback_v }}
+                  # WE Day
+                  - conditions:
+                      - condition: time
+                        after: !input we_day_start
+                        before: !input we_evening_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input we_day_brightness
+                          color_temp_kelvin: !input we_day_color_temp
+                          transition: 2
 
-      active_eco_remaining: >-
-        {% if is_climate_night %}
-          {{ [temp_night_eco_delay_v | int - temp_night_setback_delay_v | int, 1] | max }}
-        {% else %}
-          {{ [temp_eco_delay_v | int - temp_setback_delay_v | int, 1] | max }}
-        {% endif %}
+                  # WE Evening
+                  - conditions:
+                      - condition: time
+                        after: !input we_evening_start
+                        before: !input we_night_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input we_evening_brightness
+                          color_temp_kelvin: !input we_evening_color_temp
+                          transition: 2
 
-      active_temp_eco: >-
-        {{ temp_night_eco_v if is_climate_night else temp_eco_v }}
+                  # WE Night
+                  - conditions:
+                      - condition: or
+                        conditions:
+                          - condition: time
+                            after: !input we_night_start
+                          - condition: time
+                            before: !input we_morning_start
+                      - condition: template
+                        value_template: >-
+                          {{ illuminance_sensor_v == '' or
+                             states(illuminance_sensor_v) | float(0) < illuminance_threshold_v }}
+                    sequence:
+                      - action: light.turn_on
+                        target: !input light_target
+                        data:
+                          brightness_pct: !input we_night_brightness
+                          color_temp_kelvin: !input we_night_color_temp
+                          transition: 2
 
-  - choose:
+      # Climate comfort temperature
+      - if:
+          - condition: template
+            value_template: "{{ enable_climate_v and climate_target_v != '' }}"
+        then:
+          - choose:
+              # Night mode
+              - conditions:
+                  - condition: or
+                    conditions:
+                      - condition: time
+                        after: !input climate_night_start
+                      - condition: time
+                        before: !input climate_day_start
+                sequence:
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ climate_target_v }}"
+                    data:
+                      temperature: !input temp_night_comfort
+              # Weekend day
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ now().weekday() >= 5 and weekend_different_profiles_v }}
+                sequence:
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ climate_target_v }}"
+                    data:
+                      temperature: !input temp_comfort_weekend
+            # Weekday default
+            default:
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ climate_target_v }}"
+                data:
+                  temperature: !input temp_comfort
 
-    # ──────────────────────────────────────────────────────
-    # PRESENCE DETECTED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "presence_on"
-      sequence:
-        - if:
-            - condition: template
-              value_template: "{{ lux_ok == true or lux_ok == 'true' }}"
-          then:
-            - choose:
-                - conditions:
-                    - condition: template
-                      value_template: "{{ use_scenes_v and target_scene | trim != '' }}"
-                  sequence:
-                    - action: scene.turn_on
-                      target:
-                        entity_id: "{{ target_scene | trim }}"
-                      data:
-                        transition: 2
-              default:
-                - action: light.turn_on
-                  target: !input light_target
-                  data:
-                    brightness_pct: "{{ target_brightness | trim | int }}"
-                    color_temp: "{{ target_color_temp_mireds | trim | int }}"
-                    transition: 2
+  # ── PRESENCE CLEARED ───────────────────────────────────
+  - if:
+      - condition: trigger
+        id: "presence_off"
+    then:
+      - delay:
+          seconds: !input light_off_delay
 
-        - if:
-            - condition: template
-              value_template: "{{ enable_climate_v and climate_target_v != '' }}"
-          then:
-            - action: climate.set_temperature
-              target:
-                entity_id: "{{ climate_target_v }}"
-              data:
-                temperature: "{{ active_temp_comfort | trim | float }}"
+      - condition: state
+        entity_id: !input presence_sensor
+        state: "off"
 
-    # ──────────────────────────────────────────────────────
-    # PRESENCE CLEARED
-    # ──────────────────────────────────────────────────────
-    - conditions:
-        - condition: trigger
-          id: "presence_off"
-      sequence:
-        - delay:
-            seconds: !input light_off_delay
+      - action: light.turn_off
+        target: !input light_target
+        data:
+          transition: 3
 
-        - condition: state
-          entity_id: !input presence_sensor
-          state: "off"
-
-        - action: light.turn_off
-          target: !input light_target
-          data:
-            transition: 3
-
-        - if:
-            - condition: template
-              value_template: "{{ enable_climate_v and climate_target_v != '' }}"
-          then:
-            - delay:
-                minutes: "{{ active_setback_delay | trim | int }}"
-            - condition: state
-              entity_id: !input presence_sensor
-              state: "off"
-            - action: climate.set_temperature
-              target:
-                entity_id: "{{ climate_target_v }}"
-              data:
-                temperature: "{{ active_temp_setback | trim | float }}"
-
-            - delay:
-                minutes: "{{ active_eco_remaining | trim | int }}"
-            - condition: state
-              entity_id: !input presence_sensor
-              state: "off"
-            - action: climate.set_temperature
-              target:
-                entity_id: "{{ climate_target_v }}"
-              data:
-                temperature: "{{ active_temp_eco | trim | float }}"
+      # Climate setback & eco
+      - if:
+          - condition: template
+            value_template: "{{ enable_climate_v and climate_target_v != '' }}"
+        then:
+          - choose:
+              # Night mode
+              - conditions:
+                  - condition: or
+                    conditions:
+                      - condition: time
+                        after: !input climate_night_start
+                      - condition: time
+                        before: !input climate_day_start
+                sequence:
+                  - delay:
+                      minutes: !input temp_night_setback_delay
+                  - condition: state
+                    entity_id: !input presence_sensor
+                    state: "off"
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ climate_target_v }}"
+                    data:
+                      temperature: !input temp_night_setback
+                  - delay:
+                      minutes: !input temp_night_eco_delay
+                  - condition: state
+                    entity_id: !input presence_sensor
+                    state: "off"
+                  - action: climate.set_temperature
+                    target:
+                      entity_id: "{{ climate_target_v }}"
+                    data:
+                      temperature: !input temp_night_eco
+            # Day mode (default)
+            default:
+              - delay:
+                  minutes: !input temp_setback_delay
+              - condition: state
+                entity_id: !input presence_sensor
+                state: "off"
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ climate_target_v }}"
+                data:
+                  temperature: !input temp_setback
+              - delay:
+                  minutes: !input temp_eco_delay
+              - condition: state
+                entity_id: !input presence_sensor
+                state: "off"
+              - action: climate.set_temperature
+                target:
+                  entity_id: "{{ climate_target_v }}"
+                data:
+                  temperature: !input temp_eco
 
 mode: restart
