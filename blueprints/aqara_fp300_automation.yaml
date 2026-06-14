@@ -1,5 +1,5 @@
 blueprint:
-  name: "Aqara FP300 – Light & Climate Control v3.0.0"
+  name: "Aqara FP300 – Light & Climate Control v3.1.0"
   description: >
     Smart light & climate automation for the Aqara FP300 mmWave presence sensor.
 
@@ -367,8 +367,26 @@ blueprint:
             entity:
               domain: climate
 
+        climate_night_start:
+          name: "Night Mode – Start Time"
+          description: >
+            From this time onward, night temperatures are used instead of day temperatures.
+            Should match the Night profile start time from Section 3.
+          default: "22:00:00"
+          selector:
+            time: {}
+
+        climate_night_end:
+          name: "Night Mode – End Time"
+          description: "From this time onward, day temperatures are used again."
+          default: "07:00:00"
+          selector:
+            time: {}
+
+        # ── Day temperatures ────────────────────────────
         temp_comfort:
-          name: "Comfort Temperature – Weekday (°C)"
+          name: "Day – Comfort Temperature (°C)"
+          description: "Applied when presence is detected during the day."
           default: 21.0
           selector:
             number:
@@ -379,7 +397,7 @@ blueprint:
               mode: slider
 
         temp_comfort_weekend:
-          name: "Comfort Temperature – Weekend (°C)"
+          name: "Day – Comfort Temperature Weekend (°C)"
           description: "Only applies when Weekend Profiles are enabled."
           default: 22.0
           selector:
@@ -391,7 +409,7 @@ blueprint:
               mode: slider
 
         temp_setback_delay:
-          name: "Setback Delay (minutes)"
+          name: "Day – Setback Delay (minutes)"
           description: "Time after leaving before setback temperature is applied."
           default: 15
           selector:
@@ -402,7 +420,7 @@ blueprint:
               mode: slider
 
         temp_setback:
-          name: "Setback Temperature (°C)"
+          name: "Day – Setback Temperature (°C)"
           default: 19.0
           selector:
             number:
@@ -413,7 +431,7 @@ blueprint:
               mode: slider
 
         temp_eco_delay:
-          name: "Eco Mode Delay (minutes)"
+          name: "Day – Eco Mode Delay (minutes)"
           description: "Total time after leaving until eco mode (must be greater than Setback Delay)."
           default: 60
           selector:
@@ -424,12 +442,71 @@ blueprint:
               mode: slider
 
         temp_eco:
-          name: "Eco Temperature (°C)"
+          name: "Day – Eco Temperature (°C)"
           default: 17.0
           selector:
             number:
               min: 10
               max: 25
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        # ── Night temperatures ──────────────────────────
+        temp_night_comfort:
+          name: "Night – Comfort Temperature (°C)"
+          description: "Applied when presence is detected during the night (e.g. sleeping)."
+          default: 18.0
+          selector:
+            number:
+              min: 10
+              max: 26
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_night_setback_delay:
+          name: "Night – Setback Delay (minutes)"
+          description: "Time after leaving before night setback temperature is applied."
+          default: 30
+          selector:
+            number:
+              min: 0
+              max: 120
+              unit_of_measurement: min
+              mode: slider
+
+        temp_night_setback:
+          name: "Night – Setback Temperature (°C)"
+          description: "Applied after leaving the room at night."
+          default: 17.0
+          selector:
+            number:
+              min: 10
+              max: 24
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+        temp_night_eco_delay:
+          name: "Night – Eco Mode Delay (minutes)"
+          description: "Total time after leaving until eco mode at night."
+          default: 60
+          selector:
+            number:
+              min: 15
+              max: 480
+              unit_of_measurement: min
+              mode: slider
+
+        temp_night_eco:
+          name: "Night – Eco Temperature (°C)"
+          description: "Applied after extended absence at night."
+          default: 16.0
+          selector:
+            number:
+              min: 10
+              max: 22
               step: 0.5
               unit_of_measurement: "°C"
               mode: slider
@@ -497,9 +574,22 @@ variables:
   we_evening_scene_v: !input we_evening_scene
   we_night_scene_v: !input we_night_scene
 
-  # Comfort temperatures
+  # Climate time window
+  climate_night_start_v: !input climate_night_start
+  climate_night_end_v: !input climate_night_end
+
+  # Day temperatures
   temp_comfort_v: !input temp_comfort
   temp_comfort_weekend_v: !input temp_comfort_weekend
+  temp_setback_v: !input temp_setback
+  temp_eco_v: !input temp_eco
+
+  # Night temperatures
+  temp_night_comfort_v: !input temp_night_comfort
+  temp_night_setback_v: !input temp_night_setback
+  temp_night_setback_delay_v: !input temp_night_setback_delay
+  temp_night_eco_v: !input temp_night_eco
+  temp_night_eco_delay_v: !input temp_night_eco_delay
 
   # Derived values — only variables allowed inside {{ }}
   is_weekend: "{{ now().weekday() >= 5 }}"
@@ -564,8 +654,35 @@ variables:
       {% else %}{{ morning_scene_v }}{% endif %}
     {% endif %}
 
+  # True when current time is within the night climate window
+  is_climate_night: >
+    {% set t = now().strftime('%H:%M:%S') %}
+    {{ t >= climate_night_start_v or t < climate_night_end_v }}
+
   active_temp_comfort: >
-    {{ temp_comfort_weekend_v if use_weekend else temp_comfort_v }}
+    {% if is_climate_night %}
+      {{ temp_night_comfort_v }}
+    {% elif use_weekend %}
+      {{ temp_comfort_weekend_v }}
+    {% else %}
+      {{ temp_comfort_v }}
+    {% endif %}
+
+  active_temp_setback: >
+    {{ temp_night_setback_v if is_climate_night else temp_setback_v }}
+
+  active_temp_eco: >
+    {{ temp_night_eco_v if is_climate_night else temp_eco_v }}
+
+  active_setback_delay: >
+    {{ temp_night_setback_delay_v | int if is_climate_night else temp_setback_delay_v | int }}
+
+  active_eco_remaining: >
+    {% if is_climate_night %}
+      {{ [temp_night_eco_delay_v | int - temp_night_setback_delay_v | int, 1] | max }}
+    {% else %}
+      {{ [temp_eco_delay_v | int - temp_setback_delay_v | int, 1] | max }}
+    {% endif %}
 
   temp_eco_remaining_v: >
     {{ [temp_eco_delay_v | int - temp_setback_delay_v | int, 1] | max }}
@@ -652,7 +769,7 @@ action:
               value_template: "{{ enable_climate_v and climate_target_v != '' }}"
           then:
             - delay:
-                minutes: "{{ temp_setback_delay_v | int }}"
+                minutes: "{{ active_setback_delay | int }}"
             - condition: state
               entity_id: !input presence_sensor
               state: "off"
@@ -660,10 +777,10 @@ action:
               target:
                 entity_id: "{{ climate_target_v }}"
               data:
-                temperature: !input temp_setback
+                temperature: "{{ active_temp_setback | float }}"
 
             - delay:
-                minutes: "{{ temp_eco_remaining_v | int }}"
+                minutes: "{{ active_eco_remaining | int }}"
             - condition: state
               entity_id: !input presence_sensor
               state: "off"
@@ -671,6 +788,6 @@ action:
               target:
                 entity_id: "{{ climate_target_v }}"
               data:
-                temperature: !input temp_eco
+                temperature: "{{ active_temp_eco | float }}"
 
 mode: restart
