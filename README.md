@@ -22,13 +22,6 @@
 - **Setback temperature** after a short absence (configurable delay)
 - **Eco temperature** after extended absence (configurable delay)
 
-### 📍 Multi-Zone Support *(optional)*
-- Up to **2 additional zones** (Zone 2 & Zone 3), each with:
-  - Independent presence sensor (e.g. a specific FP300 sub-zone)
-  - Independent light target
-  - Individual turn-off delay
-  - Optional scene per zone
-
 ---
 
 ## 📋 Requirements
