@@ -61,8 +61,6 @@ Click the **Import Blueprint** badge above.
 | **3 · Weekday Profiles** | Morning / Day / Evening: start time, brightness, color temp, scene |
 | **4 · Weekend Profiles** | Same as weekday, applied on Saturday & Sunday |
 | **5 · Climate** | Enable toggle, thermostat entity, comfort/setback/eco temperatures and delays |
-| **6 · Zone 2** | Second sensor + light with independent settings |
-| **7 · Zone 3** | Third sensor + light with independent settings |
 
 ---
 
